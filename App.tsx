@@ -32,7 +32,8 @@ import {
   Dna,
   History,
   LogIn,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react';
 
 // --- Helper Functions for Calculations ---
@@ -457,6 +458,100 @@ const AnamnesisModal: React.FC<AnamnesisModalProps> = ({ onConfirm, isOpen }) =>
   );
 };
 
+interface ProfileEditModalProps {
+  user: UserData;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (updatedUser: UserData) => void;
+}
+
+const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, isOpen, onClose, onSave }) => {
+  const [formData, setFormData] = useState<UserData>(user);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if(isOpen) setFormData(user);
+  }, [isOpen, user]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+       await onSave(formData);
+       onClose();
+    } catch (e) {
+      alert("Erro ao salvar perfil.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative overflow-y-auto max-h-[90vh]">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+           <X size={24} />
+        </button>
+        
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+           <User className="text-primary" /> Editar Perfil
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <input type="text" className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+           </div>
+           
+           <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Idade</label>
+              <input type="number" className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.age || ''} onChange={e => setFormData({...formData, age: parseInt(e.target.value) || 0})} />
+           </div>
+
+           <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
+               <select className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}>
+                 <option value={Gender.MALE}>Masculino</option>
+                 <option value={Gender.FEMALE}>Feminino</option>
+               </select>
+           </div>
+
+           <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+              <input type="number" className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} />
+           </div>
+
+           <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Altura (cm)</label>
+              <input type="number" className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.height || ''} onChange={e => setFormData({...formData, height: parseInt(e.target.value) || 0})} />
+           </div>
+
+           <div className="md:col-span-2">
+             <label className="block text-sm font-medium text-gray-700 mb-1">Meta de Perda (kg)</label>
+             <input type="number" className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.targetWeightLoss || ''} onChange={e => setFormData({...formData, targetWeightLoss: parseFloat(e.target.value) || 0})} />
+           </div>
+
+           <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nível de Atividade</label>
+              <select className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formData.activityLevel} onChange={e => setFormData({...formData, activityLevel: e.target.value as ActivityLevel})}>
+                {Object.values(ActivityLevel).map(level => <option key={level} value={level}>{level}</option>)}
+              </select>
+           </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full mt-6 bg-primary hover:bg-sky-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+        >
+          {saving ? <Loader2 className="animate-spin" /> : 'Salvar Alterações'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 interface OnboardingProps {
   user: UserData;
@@ -492,7 +587,7 @@ const OnboardingScreen: React.FC<OnboardingProps> = ({ user, setUser, onNext }) 
         <input 
           type="number" 
           className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-colors"
-          value={user.age} 
+          value={user.age || ''} 
           onChange={e => setUser({...user, age: parseInt(e.target.value) || 0})} 
         />
       </div>
@@ -514,7 +609,7 @@ const OnboardingScreen: React.FC<OnboardingProps> = ({ user, setUser, onNext }) 
         <input 
           type="number" 
           className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-colors"
-          value={user.weight} 
+          value={user.weight || ''} 
           onChange={e => setUser({...user, weight: parseFloat(e.target.value) || 0})} 
         />
       </div>
@@ -524,7 +619,7 @@ const OnboardingScreen: React.FC<OnboardingProps> = ({ user, setUser, onNext }) 
         <input 
           type="number" 
           className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-colors"
-          value={user.height} 
+          value={user.height || ''} 
           onChange={e => setUser({...user, height: parseInt(e.target.value) || 0})} 
         />
       </div>
@@ -535,7 +630,7 @@ const OnboardingScreen: React.FC<OnboardingProps> = ({ user, setUser, onNext }) 
           <input 
             type="number" 
             className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-colors pl-12"
-            value={user.targetWeightLoss} 
+            value={user.targetWeightLoss || ''} 
             onChange={e => setUser({...user, targetWeightLoss: parseFloat(e.target.value) || 0})} 
           />
           <span className="absolute left-4 top-2 text-gray-900 font-bold text-sm">- KG</span>
@@ -916,57 +1011,7 @@ const AuthScreen: React.FC<AuthProps> = ({ user, setUser, onComplete, isLoginMod
 
         if (signInError) throw signInError;
 
-        // Fetch User Profile
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) throw new Error("Erro ao recuperar usuário.");
-
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        // Update local user state from DB
-        setUser({
-          ...initialUser,
-          name: profile.name,
-          email: profile.email,
-          age: profile.age,
-          weight: profile.weight,
-          height: profile.height,
-          gender: profile.gender as Gender,
-          activityLevel: profile.activity_level as ActivityLevel,
-          targetWeightLoss: profile.target_weight_loss,
-          availableFoods: profile.available_foods,
-          workoutDays: profile.workout_days,
-          workoutDuration: profile.workout_duration,
-          targetMuscles: profile.target_muscles || []
-        });
-
-        // Fetch Plans (Diet and Workout)
-        // Note: For simplicity, we are fetching the latest, but a more robust app would handle multiple plans.
-        const { data: plans, error: plansError } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('user_id', authUser.id);
-        
-        if (plansError) console.error("Erro ao buscar planos", plansError);
-        
-        // This part would ideally pass the loaded plans up to the parent component
-        // But for this structure, we might need a callback or refactor App state lifting.
-        // For now, let's assume successful login triggers onComplete which takes to Dashboard,
-        // and Dashboard needs to handle data or we pass it here. 
-        // *Correction*: We need to pass loaded plans back to App.tsx. 
-        // Since we can't easily change the prop signature in this snippet without breaking App.tsx logic below, 
-        // we will emit a custom event or use the onComplete callback creatively? 
-        // Better: We will rely on App.tsx to reload data or we simply pass data here?
-        // Actually, let's assume for this specific prompt that login simply authenticates. 
-        // **REAL IMPLEMENTATION**: The App component handles the state. We need to expose a method to set Plans from here.
-        // I will add a prop `onPlansLoaded` to AuthScreen in the App component usage.
-        
-        // (See App component refactor below to handle this data loading)
+        onComplete();
 
       } else {
         // --- REGISTRATION FLOW ---
@@ -1025,9 +1070,9 @@ const AuthScreen: React.FC<AuthProps> = ({ user, setUser, onComplete, isLoginMod
             });
           if (workoutError) console.error("Erro ao salvar treino", workoutError);
         }
+        
+        onComplete();
       }
-
-      onComplete();
     } catch (err: any) {
       setError(err.message || "Ocorreu um erro. Tente novamente.");
     } finally {
@@ -1115,6 +1160,7 @@ interface DashboardProps {
   onLogout: () => void;
   onEditDiet: () => void;
   onEditWorkout: () => void;
+  onEditProfile: () => void;
   onRestart: () => void;
   onRegenerateMeal: (dayIdx: number, mealIdx: number) => Promise<void>;
   onRegenerateWorkoutDay: (dayIdx: number) => Promise<void>;
@@ -1122,7 +1168,7 @@ interface DashboardProps {
 }
 
 const DashboardScreen: React.FC<DashboardProps> = ({ 
-  user, stats, dietPlan, workoutPlan, onLogout, onEditDiet, onEditWorkout, onRestart,
+  user, stats, dietPlan, workoutPlan, onLogout, onEditDiet, onEditWorkout, onEditProfile, onRestart,
   onRegenerateMeal, onRegenerateWorkoutDay, onDurationChange
 }) => {
   const [openSections, setOpenSections] = useState({
@@ -1160,7 +1206,10 @@ const DashboardScreen: React.FC<DashboardProps> = ({
             <User className="text-primary" />
             <h3 className="font-bold text-gray-700">Resumo do Perfil</h3>
           </div>
-          <ChevronDown className={`transition-transform ${openSections.profile ? 'rotate-180' : ''}`} />
+          <div className="flex items-center gap-2">
+            <div onClick={(e) => {e.stopPropagation(); onEditProfile()}} className="p-1 hover:bg-gray-200 rounded cursor-pointer text-gray-500 hover:text-primary"><Pencil size={18}/></div>
+            <ChevronDown className={`transition-transform ${openSections.profile ? 'rotate-180' : ''}`} />
+          </div>
         </button>
         {openSections.profile && (
           <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -1256,6 +1305,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAnamnesis, setShowAnamnesis] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [isEditing, setIsEditing] = useState(false); // Track if user is editing from dashboard
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register'); // To control AuthScreen behavior
 
@@ -1389,11 +1439,6 @@ const App: React.FC = () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return;
 
-    // We delete old plans and insert new ones or update. 
-    // Simplified: Insert new rows? No, we should update.
-    // For this simple schema, let's delete user's plans and re-insert or use IDs if we had them.
-    // Since we store big JSON blobs, let's just update the entries.
-    
     // First, find the plan IDs.
     const { data: plans } = await supabase.from('plans').select('id, type').eq('user_id', authUser.id);
     
@@ -1405,6 +1450,29 @@ const App: React.FC = () => {
     }
     if (workoutId && currentWorkout) {
        await supabase.from('plans').update({ data: JSON.stringify(currentWorkout) }).eq('id', workoutId);
+    }
+  };
+
+  const handleProfileUpdate = async (updatedUser: UserData) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const { error } = await supabase.from('profiles').update({
+        name: updatedUser.name,
+        age: updatedUser.age,
+        weight: updatedUser.weight,
+        height: updatedUser.height,
+        gender: updatedUser.gender,
+        activity_level: updatedUser.activityLevel,
+        target_weight_loss: updatedUser.targetWeightLoss
+      }).eq('id', authUser.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setUser(updatedUser);
+      // Recalculate stats immediately
+      const newStats = calculateStats(updatedUser, deficitLevel);
+      setStats(newStats);
     }
   };
 
@@ -1453,16 +1521,9 @@ const App: React.FC = () => {
   };
 
   const handleRestart = () => {
-    // Clear everything and go to 0
-    // Optional: Sign out? Let's keep them signed in but reset form? 
-    // Prompt implies "Realizar novamente todo o teste", usually implies a fresh start. 
-    // If they are logged in, maybe we just reset the wizard but keep the user session?
-    // Let's reset state but keep session for now, assuming they want to regenerate plans.
     setStep(0);
     setDietPlan(null);
     setWorkoutPlan(null);
-    // Keep user basic info? Maybe reset answers?
-    // Let's reset answers for a true "restart" experience
     setUser(initialUser); 
   }
 
@@ -1571,6 +1632,7 @@ const App: React.FC = () => {
             onLogout={() => { supabase.auth.signOut(); setStep(0); setUser(initialUser); }}
             onEditDiet={() => { setIsEditing(true); setStep(4); }}
             onEditWorkout={() => { setIsEditing(true); setStep(6); }}
+            onEditProfile={() => setShowProfileEdit(true)}
             onRestart={handleRestart}
             onRegenerateMeal={handleRegenerateMeal}
             onRegenerateWorkoutDay={handleRegenerateWorkoutDay}
@@ -1580,6 +1642,12 @@ const App: React.FC = () => {
       </main>
 
       <AnamnesisModal isOpen={showAnamnesis} onConfirm={handleAnamnesisConfirm} />
+      <ProfileEditModal 
+        user={user} 
+        isOpen={showProfileEdit} 
+        onClose={() => setShowProfileEdit(false)} 
+        onSave={handleProfileUpdate} 
+      />
     </div>
   );
 };
