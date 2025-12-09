@@ -31,7 +31,8 @@ import {
   Flame,
   Dna,
   History,
-  LogIn
+  LogIn,
+  ArrowLeft
 } from 'lucide-react';
 
 // --- Helper Functions for Calculations ---
@@ -893,9 +894,10 @@ interface AuthProps {
   isLoginMode: boolean; // True if logging in from header, False if registering after flow
   dietPlan: DietDay[] | null;
   workoutPlan: WorkoutDay[] | null;
+  onBack: () => void;
 }
 
-const AuthScreen: React.FC<AuthProps> = ({ user, setUser, onComplete, isLoginMode, dietPlan, workoutPlan }) => {
+const AuthScreen: React.FC<AuthProps> = ({ user, setUser, onComplete, isLoginMode, dietPlan, workoutPlan, onBack }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1092,6 +1094,15 @@ const AuthScreen: React.FC<AuthProps> = ({ user, setUser, onComplete, isLoginMod
       >
         {loading ? <Loader2 className="animate-spin" /> : (isLoginMode ? 'Entrar' : 'Criar Conta e Salvar')}
       </button>
+
+      {isLoginMode && (
+        <button 
+          onClick={onBack}
+          className="w-full mt-4 text-sm text-gray-500 hover:text-primary transition-colors flex items-center justify-center gap-1"
+        >
+          <ArrowLeft size={14} /> Não tem uma conta? Iniciar teste
+        </button>
+      )}
     </div>
   );
 };
@@ -1547,6 +1558,7 @@ const App: React.FC = () => {
             isLoginMode={authMode === 'login'}
             dietPlan={dietPlan}
             workoutPlan={workoutPlan}
+            onBack={() => setStep(0)}
           />
         )}
 
