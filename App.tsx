@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserData, Gender, ActivityLevel, CalculatedStats, DietDay, WorkoutDay, DeficitLevel } from './types';
 import { generateDietPlan, generateWorkoutPlan, regenerateMeal, regenerateWorkoutDay } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -33,7 +33,10 @@ import {
   History,
   LogIn,
   ArrowLeft,
-  X
+  X,
+  Mic,
+  MicOff,
+  Trash2
 } from 'lucide-react';
 
 // --- Helper Functions for Calculations ---
@@ -169,35 +172,45 @@ const DietListView: React.FC<{
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-3">
                           <h4 className="font-semibold text-gray-700 text-lg">{meal.name}</h4>
-                          {onRegenerateMeal && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleRegenerateClick(dayIdx, mealIdx); }}
-                              disabled={isLoading}
-                              className="text-gray-400 hover:text-primary transition-colors p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
-                              title="Gerar nova opção para esta refeição"
-                            >
-                              {isLoading ? <Loader2 size={16} className="animate-spin text-primary" /> : <RefreshCw size={16} />}
-                            </button>
-                          )}
                         </div>
                         <span className="text-sm font-bold text-primary bg-sky-50 px-3 py-1 rounded-lg border border-sky-100 whitespace-nowrap shadow-sm">
                           {meal.calories} kcal
                         </span>
                       </div>
+                      
                       <p className="text-gray-600 text-sm mb-4 leading-relaxed">{meal.description}</p>
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500 font-medium">
-                        <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                          <span className="w-2 h-2 rounded-full bg-blue-400"></span> 
-                          Proteína: {meal.macros.protein}
-                        </span>
-                        <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                          <span className="w-2 h-2 rounded-full bg-yellow-400"></span> 
-                          Carboidratos: {meal.macros.carbs}
-                        </span>
-                        <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                          <span className="w-2 h-2 rounded-full bg-red-400"></span> 
-                          Gorduras: {meal.macros.fats}
-                        </span>
+                      
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex flex-wrap gap-3 text-xs text-gray-500 font-medium">
+                          <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <span className="w-2 h-2 rounded-full bg-blue-400"></span> 
+                            Proteína: {meal.macros.protein}
+                          </span>
+                          <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <span className="w-2 h-2 rounded-full bg-yellow-400"></span> 
+                            Carboidratos: {meal.macros.carbs}
+                          </span>
+                          <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <span className="w-2 h-2 rounded-full bg-red-400"></span> 
+                            Gorduras: {meal.macros.fats}
+                          </span>
+                        </div>
+
+                        {onRegenerateMeal && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleRegenerateClick(dayIdx, mealIdx); }}
+                              disabled={isLoading}
+                              className="flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50"
+                              title="Gerar nova opção para esta refeição"
+                            >
+                              {isLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <RefreshCw size={16} />
+                              )}
+                              {isLoading ? 'Gerando...' : `Trocar opção de ${meal.name}`}
+                            </button>
+                          )}
                       </div>
                     </div>
                   );
@@ -381,7 +394,7 @@ const StatsCard: React.FC<{ stats: CalculatedStats | null; user: UserData; defic
       <p className="text-xs text-gray-500 mt-2">Nível: {user.activityLevel.split(' ')[0]}</p>
     </div>
     <div className="bg-gradient-to-br from-primary to-secondary p-6 rounded-xl shadow-md text-white">
-      <h3 className="font-medium text-sm uppercase opacity-90">Meta Diária (Déficit {deficitLevel})</h3>
+      <h3 className="font-medium text-sm uppercase opacity-90">Meta Diária ({deficitLevel})</h3>
       <p className="text-4xl font-bold mt-2">{stats?.targetCalories} <span className="text-sm font-normal opacity-80">kcal</span></p>
       <p className="text-xs mt-2 opacity-90">Perda estimada de {user.targetWeightLoss}kg em {stats?.weeksToGoal} semanas.</p>
     </div>
@@ -400,6 +413,19 @@ const AnamnesisModal: React.FC<AnamnesisModalProps> = ({ onConfirm, isOpen }) =>
   const [q1, setQ1] = useState(false);
   const [q2, setQ2] = useState(false);
   const [q3, setQ3] = useState(false);
+
+  const handleAgreedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setAgreed(checked);
+    if (checked) {
+      setQ1(true);
+      setQ2(true);
+      setQ3(true);
+    } else {
+      // Optional: uncheck if agreed is unchecked
+      // setQ1(false); setQ2(false); setQ3(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -438,7 +464,7 @@ const AnamnesisModal: React.FC<AnamnesisModalProps> = ({ onConfirm, isOpen }) =>
               type="checkbox" 
               className="mt-1 w-5 h-5 text-secondary rounded border-gray-300 focus:ring-secondary"
               checked={agreed}
-              onChange={e => setAgreed(e.target.checked)}
+              onChange={handleAgreedChange}
             />
             <span className="text-sm font-medium text-gray-800">
               Eu confirmo que todas as informações acima são verdadeiras e assumo total responsabilidade pela execução dos treinos e dieta sugeridos pelo aplicativo. Entendo que o Glyx Fitness é uma ferramenta de suporte e não substitui acompanhamento médico profissional.
@@ -460,23 +486,28 @@ const AnamnesisModal: React.FC<AnamnesisModalProps> = ({ onConfirm, isOpen }) =>
 
 interface ProfileEditModalProps {
   user: UserData;
+  deficitLevel: DeficitLevel;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedUser: UserData) => void;
+  onSave: (updatedUser: UserData, updatedDeficit: DeficitLevel) => void;
 }
 
-const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, isOpen, onClose, onSave }) => {
+const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, deficitLevel, isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState<UserData>(user);
+  const [formDeficit, setFormDeficit] = useState<DeficitLevel>(deficitLevel);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if(isOpen) setFormData(user);
-  }, [isOpen, user]);
+    if(isOpen) {
+      setFormData(user);
+      setFormDeficit(deficitLevel);
+    }
+  }, [isOpen, user, deficitLevel]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-       await onSave(formData);
+       await onSave(formData, formDeficit);
        onClose();
     } catch (e) {
       alert("Erro ao salvar perfil.");
@@ -538,6 +569,14 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, isOpen, onClo
                 {Object.values(ActivityLevel).map(level => <option key={level} value={level}>{level}</option>)}
               </select>
            </div>
+
+           <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Intensidade do Déficit</label>
+              <select className="w-full px-4 py-2 bg-gray-100 rounded-lg" value={formDeficit} onChange={e => setFormDeficit(e.target.value as DeficitLevel)}>
+                 {Object.values(DeficitLevel).map(level => <option key={level} value={level}>{level}</option>)}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Isso ajusta sua meta calórica diária.</p>
+           </div>
         </div>
 
         <button 
@@ -545,7 +584,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, isOpen, onClo
           disabled={saving}
           className="w-full mt-6 bg-primary hover:bg-sky-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
         >
-          {saving ? <Loader2 className="animate-spin" /> : 'Salvar Alterações'}
+          {saving ? <Loader2 className="animate-spin" /> : 'Salvar Alterações e Recalcular'}
         </button>
       </div>
     </div>
@@ -779,41 +818,107 @@ interface FoodInputProps {
   onBack: () => void;
 }
 
-const FoodInputScreen: React.FC<FoodInputProps> = ({ user, setUser, onGenerate, loading, error, onBack }) => (
-  <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-    <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-      <Apple className="text-secondary" /> Preferências Alimentares
-    </h2>
-    <p className="text-gray-600 mb-6">
-      Para que a dieta seja realista, liste os alimentos que você tem em casa, gosta de comer ou tem facilidade para comprar.
-      A IA usará isso para criar receitas práticas.
-    </p>
+const FoodInputScreen: React.FC<FoodInputProps> = ({ user, setUser, onGenerate, loading, error, onBack }) => {
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-    <textarea
-      className="w-full h-40 p-4 rounded-xl bg-gray-100 border border-gray-200 text-gray-900 focus:bg-white focus:ring-2 focus:ring-secondary outline-none transition-all resize-none"
-      placeholder="Ex: Frango, ovos, arroz, feijão, alface, tomate, banana, aveia, iogurte, pão integral..."
-      value={user.availableFoods}
-      onChange={e => setUser({...user, availableFoods: e.target.value})}
-    ></textarea>
+  useEffect(() => {
+    // Check for browser support
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'pt-BR';
 
-    {error && (
-      <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm">
-        <AlertCircle size={16} /> {error}
+      recognitionRef.current.onresult = (event: any) => {
+         let interimTranscript = '';
+         let finalTranscript = '';
+
+         for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+               finalTranscript += event.results[i][0].transcript;
+            } else {
+               interimTranscript += event.results[i][0].transcript;
+            }
+         }
+
+         if (finalTranscript) {
+            setUser({...user, availableFoods: user.availableFoods + ' ' + finalTranscript});
+         }
+      };
+
+      recognitionRef.current.onend = () => {
+         setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+         console.error("Speech recognition error", event.error);
+         setIsListening(false);
+      };
+    }
+  }, [user, setUser]);
+
+  const toggleListening = () => {
+     if (isListening) {
+        recognitionRef.current?.stop();
+        setIsListening(false);
+     } else {
+        if (recognitionRef.current) {
+           recognitionRef.current.start();
+           setIsListening(true);
+        } else {
+           alert("Seu navegador não suporta reconhecimento de voz.");
+        }
+     }
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+      <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <Apple className="text-secondary" /> Preferências Alimentares
+      </h2>
+      <p className="text-gray-600 mb-6">
+        Para que a dieta seja realista, liste os alimentos que você tem em casa, gosta de comer ou tem facilidade para comprar.
+        A IA usará isso para criar receitas práticas.
+      </p>
+
+      <div className="relative">
+        <textarea
+          className="w-full h-40 p-4 rounded-xl bg-gray-100 border border-gray-200 text-gray-900 focus:bg-white focus:ring-2 focus:ring-secondary outline-none transition-all resize-none pr-12"
+          placeholder="Ex: Frango, ovos, arroz, feijão, alface, tomate, banana, aveia, iogurte, pão integral..."
+          value={user.availableFoods}
+          onChange={e => setUser({...user, availableFoods: e.target.value})}
+        ></textarea>
+        <button 
+           onClick={toggleListening}
+           className={`absolute bottom-4 right-4 p-2 rounded-full transition-all shadow-md ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-gray-500 hover:text-primary hover:bg-gray-50'}`}
+           title="Falar alimentos"
+        >
+           {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
       </div>
-    )}
 
-    <div className="mt-6 flex justify-between">
-      <button onClick={onBack} className="text-gray-500 hover:text-gray-800 px-4">Voltar</button>
-      <button 
-        onClick={onGenerate}
-        disabled={!user.availableFoods || loading}
-        className="bg-secondary hover:bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-wait"
-      >
-        {loading ? <Loader2 className="animate-spin" /> : 'Gerar Plano Alimentar'}
-      </button>
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-between">
+        <button onClick={onBack} className="text-gray-500 hover:text-gray-800 px-4">Voltar</button>
+        <button 
+          onClick={onGenerate}
+          disabled={!user.availableFoods || loading}
+          className="bg-secondary hover:bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-wait"
+        >
+          {loading ? <Loader2 className="animate-spin" /> : 'Gerar Plano Alimentar'}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface DietPlanProps {
   dietPlan: DietDay[] | null;
@@ -1165,11 +1270,12 @@ interface DashboardProps {
   onRegenerateMeal: (dayIdx: number, mealIdx: number) => Promise<void>;
   onRegenerateWorkoutDay: (dayIdx: number) => Promise<void>;
   onDurationChange: (dayIdx: number, duration: string) => Promise<void>;
+  onDeleteAccount: () => void;
 }
 
 const DashboardScreen: React.FC<DashboardProps> = ({ 
   user, stats, dietPlan, workoutPlan, onLogout, onEditDiet, onEditWorkout, onEditProfile, onRestart,
-  onRegenerateMeal, onRegenerateWorkoutDay, onDurationChange
+  onRegenerateMeal, onRegenerateWorkoutDay, onDurationChange, onDeleteAccount
 }) => {
   const [openSections, setOpenSections] = useState({
     profile: true,
@@ -1212,11 +1318,22 @@ const DashboardScreen: React.FC<DashboardProps> = ({
           </div>
         </button>
         {openSections.profile && (
-          <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div><span className="text-gray-500 block">Idade</span> <span className="font-semibold">{user.age} anos</span></div>
-            <div><span className="text-gray-500 block">Peso Inicial</span> <span className="font-semibold">{user.weight} kg</span></div>
-            <div><span className="text-gray-500 block">Altura</span> <span className="font-semibold">{user.height} cm</span></div>
-            <div><span className="text-gray-500 block">Meta</span> <span className="font-semibold text-secondary">-{user.targetWeightLoss} kg</span></div>
+          <div className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6">
+              <div><span className="text-gray-500 block">Idade</span> <span className="font-semibold">{user.age} anos</span></div>
+              <div><span className="text-gray-500 block">Peso Inicial</span> <span className="font-semibold">{user.weight} kg</span></div>
+              <div><span className="text-gray-500 block">Altura</span> <span className="font-semibold">{user.height} cm</span></div>
+              <div><span className="text-gray-500 block">Meta</span> <span className="font-semibold text-secondary">-{user.targetWeightLoss} kg</span></div>
+            </div>
+            
+            <div className="border-t border-gray-100 pt-4 flex justify-end">
+              <button 
+                onClick={onDeleteAccount}
+                className="text-xs text-red-500 hover:text-red-700 hover:underline flex items-center gap-1"
+              >
+                <Trash2 size={12} /> Excluir Conta e Dados
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1360,8 +1477,9 @@ const App: React.FC = () => {
       const plan = await generateDietPlan(user, stats);
       setDietPlan(plan);
       nextStep();
-    } catch (err) {
-      setError("Falha ao gerar dieta. Tente novamente.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Falha ao gerar dieta. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -1374,8 +1492,9 @@ const App: React.FC = () => {
       const plan = await generateWorkoutPlan(user);
       setWorkoutPlan(plan);
       nextStep();
-    } catch (err) {
-      setError("Falha ao gerar treino. Tente novamente.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Falha ao gerar treino. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -1453,9 +1572,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleProfileUpdate = async (updatedUser: UserData) => {
+  const handleProfileUpdate = async (updatedUser: UserData, updatedDeficit: DeficitLevel) => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
+      // Attempt to save profile data to Supabase
       const { error } = await supabase.from('profiles').update({
         name: updatedUser.name,
         age: updatedUser.age,
@@ -1464,15 +1584,43 @@ const App: React.FC = () => {
         gender: updatedUser.gender,
         activity_level: updatedUser.activityLevel,
         target_weight_loss: updatedUser.targetWeightLoss
+        // Note: We are not saving deficit_level to DB to avoid schema errors if column doesn't exist,
+        // but we update it locally for the session calculation.
       }).eq('id', authUser.id);
       
       if (error) throw error;
       
       // Update local state
       setUser(updatedUser);
-      // Recalculate stats immediately
-      const newStats = calculateStats(updatedUser, deficitLevel);
+      setDeficitLevel(updatedDeficit);
+      
+      // Recalculate stats immediately using the NEW values
+      const newStats = calculateStats(updatedUser, updatedDeficit);
       setStats(newStats);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Tem certeza absoluta? Essa ação apagará todos os seus dados e histórico. Você poderá usar o mesmo email para criar uma nova conta do zero.")) return;
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+       try {
+         // Delete data associated with user
+         await supabase.from('plans').delete().eq('user_id', authUser.id);
+         await supabase.from('profiles').delete().eq('id', authUser.id);
+         
+         // Sign out
+         await supabase.auth.signOut();
+         setStep(0);
+         setUser(initialUser);
+         setDietPlan(null);
+         setWorkoutPlan(null);
+         alert("Conta resetada com sucesso.");
+       } catch (e) {
+         console.error(e);
+         alert("Erro ao excluir dados.");
+       }
     }
   };
 
@@ -1501,8 +1649,14 @@ const App: React.FC = () => {
            workoutDuration: profile.workout_duration,
            targetMuscles: profile.target_muscles || []
          }));
-         const calculated = calculateStats({ ...initialUser, ...profile, gender: profile.gender as Gender, activityLevel: profile.activity_level as ActivityLevel }, DeficitLevel.MODERATE); // Deficit level not stored in DB in this simple version, defaulting
+         // Default to MODERATE on load since we don't persist it, or keep current if set
+         const calculated = calculateStats({ ...initialUser, ...profile, gender: profile.gender as Gender, activityLevel: profile.activity_level as ActivityLevel }, DeficitLevel.MODERATE); 
          setStats(calculated);
+       } else {
+         // User authenticated but no profile found (e.g. deleted account). Reset.
+         setStep(0);
+         setUser(initialUser);
+         return;
        }
 
        if (plans) {
@@ -1637,6 +1791,7 @@ const App: React.FC = () => {
             onRegenerateMeal={handleRegenerateMeal}
             onRegenerateWorkoutDay={handleRegenerateWorkoutDay}
             onDurationChange={handleDurationChange}
+            onDeleteAccount={handleDeleteAccount}
           />
         )}
       </main>
@@ -1644,6 +1799,7 @@ const App: React.FC = () => {
       <AnamnesisModal isOpen={showAnamnesis} onConfirm={handleAnamnesisConfirm} />
       <ProfileEditModal 
         user={user} 
+        deficitLevel={deficitLevel}
         isOpen={showProfileEdit} 
         onClose={() => setShowProfileEdit(false)} 
         onSave={handleProfileUpdate} 
