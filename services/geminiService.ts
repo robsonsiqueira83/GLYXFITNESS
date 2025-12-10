@@ -1,11 +1,12 @@
 import { UserData, CalculatedStats, DietDay, WorkoutDay, DietMeal } from "../types";
 import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 const MODEL_ID = 'gemini-2.5-flash';
 
 export const generateDietPlan = async (user: UserData, stats: CalculatedStats): Promise<DietDay[]> => {
+  // Initialize AI client here to ensure process.env.API_KEY is available
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const systemInstruction = `
     Você é um nutricionista especialista em emagrecimento.
     Sua tarefa é gerar um plano de dieta semanal de 7 dias.
@@ -58,6 +59,8 @@ export const generateDietPlan = async (user: UserData, stats: CalculatedStats): 
 };
 
 export const regenerateMeal = async (user: UserData, currentMealName: string, targetCalories: number): Promise<DietMeal> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const systemInstruction = `
     Você é um nutricionista. Gere uma única opção de refeição substituta.
     Retorne APENAS um JSON válido no seguinte formato:
@@ -97,6 +100,8 @@ export const regenerateMeal = async (user: UserData, currentMealName: string, ta
 }
 
 export const generateWorkoutPlan = async (user: UserData): Promise<WorkoutDay[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const systemInstruction = `
     Você é um personal trainer de elite.
     Gere um plano de treino semanal.
@@ -148,6 +153,8 @@ export const generateWorkoutPlan = async (user: UserData): Promise<WorkoutDay[]>
 };
 
 export const regenerateWorkoutDay = async (user: UserData, currentDay: WorkoutDay, newDuration?: string): Promise<WorkoutDay> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const durationToUse = newDuration || currentDay.duration;
 
   const systemInstruction = `
