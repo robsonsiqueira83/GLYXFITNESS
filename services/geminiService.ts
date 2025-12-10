@@ -1,23 +1,40 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { UserData, CalculatedStats, DietDay, WorkoutDay, DietMeal } from "../types";
+import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
-
-// Using gemini-2.5-flash as it is the most efficient/best free tier model currently.
-const MODEL_ID = "gemini-2.5-flash";
+const API_KEY = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+const MODEL_ID = 'gemini-2.5-flash';
 
 export const generateDietPlan = async (user: UserData, stats: CalculatedStats): Promise<DietDay[]> => {
-  const prompt = `
-    Crie um plano de dieta semanal de 7 dias para uma pessoa com os seguintes dados:
-    - Peso: ${user.weight}kg
-    - Altura: ${user.height}cm
-    - Idade: ${user.age} anos
-    - Meta Diária de Calorias: ${stats.targetCalories} kcal (Déficit calórico para perda de peso)
-    - Alimentos Disponíveis/Preferências: "${user.availableFoods}"
+  const systemInstruction = `
+    Você é um nutricionista especialista em emagrecimento.
+    Sua tarefa é gerar um plano de dieta semanal de 7 dias.
+    Retorne APENAS um JSON válido.
     
-    O plano deve ser variado, saudável e focado em perda de gordura.
-    Retorne APENAS um JSON válido seguindo estritamente o schema solicitado.
+    O formato do JSON deve ser EXATAMENTE um array de objetos como este:
+    [
+      {
+        "dayName": "Dia 1",
+        "totalCalories": 2000,
+        "meals": [
+          {
+            "name": "Café da Manhã",
+            "description": "2 ovos mexidos...",
+            "calories": 300,
+            "macros": { "protein": "20g", "carbs": "10g", "fats": "15g" }
+          }
+        ]
+      }
+    ]
+  `;
+
+  const prompt = `
+    Crie uma dieta para:
+    - Peso: ${user.weight}kg, Altura: ${user.height}cm, Idade: ${user.age}
+    - Meta Diária: ${stats.targetCalories} kcal (Déficit para perda de gordura)
+    - Alimentos Disponíveis: "${user.availableFoods}"
+    
+    O plano deve ser variado e saboroso.
   `;
 
   try {
@@ -25,43 +42,15 @@ export const generateDietPlan = async (user: UserData, stats: CalculatedStats): 
       model: MODEL_ID,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              dayName: { type: Type.STRING, description: "Ex: Segunda-feira ou Dia 1" },
-              totalCalories: { type: Type.NUMBER },
-              meals: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING, description: "Ex: Café da Manhã" },
-                    description: { type: Type.STRING, description: "Descrição detalhada dos alimentos" },
-                    calories: { type: Type.NUMBER },
-                    macros: {
-                      type: Type.OBJECT,
-                      properties: {
-                        protein: { type: Type.STRING },
-                        carbs: { type: Type.STRING },
-                        fats: { type: Type.STRING },
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+        systemInstruction: systemInstruction,
+        responseMimeType: 'application/json'
       }
     });
 
     if (response.text) {
       return JSON.parse(response.text) as DietDay[];
     }
-    throw new Error("Não foi possível gerar a dieta.");
+    throw new Error("Resposta vazia da IA");
   } catch (error) {
     console.error("Erro ao gerar dieta:", error);
     throw error;
@@ -69,13 +58,22 @@ export const generateDietPlan = async (user: UserData, stats: CalculatedStats): 
 };
 
 export const regenerateMeal = async (user: UserData, currentMealName: string, targetCalories: number): Promise<DietMeal> => {
+  const systemInstruction = `
+    Você é um nutricionista. Gere uma única opção de refeição substituta.
+    Retorne APENAS um JSON válido no seguinte formato:
+    {
+      "name": "Nome da Refeição",
+      "description": "Descrição detalhada",
+      "calories": 0,
+      "macros": { "protein": "0g", "carbs": "0g", "fats": "0g" }
+    }
+  `;
+
   const prompt = `
-    Crie uma UNICA opção de refeição substituta para o "${currentMealName}".
-    - Meta calórica da refeição: Aproximadamente ${targetCalories} kcal.
-    - Alimentos Disponíveis: "${user.availableFoods}"
-    - Objetivo: Perda de gordura.
-    
-    Retorne APENAS um JSON válido para o objeto da refeição.
+    Substitua o "${currentMealName}".
+    - Meta calórica: ~${targetCalories} kcal.
+    - Alimentos: "${user.availableFoods}"
+    - Foco: Perda de gordura.
   `;
 
   try {
@@ -83,30 +81,15 @@ export const regenerateMeal = async (user: UserData, currentMealName: string, ta
       model: MODEL_ID,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING, description: "Mantenha o nome da refeição original" },
-            description: { type: Type.STRING, description: "Nova descrição da refeição" },
-            calories: { type: Type.NUMBER },
-            macros: {
-              type: Type.OBJECT,
-              properties: {
-                protein: { type: Type.STRING },
-                carbs: { type: Type.STRING },
-                fats: { type: Type.STRING },
-              }
-            }
-          }
-        }
+        systemInstruction: systemInstruction,
+        responseMimeType: 'application/json'
       }
     });
 
     if (response.text) {
       return JSON.parse(response.text) as DietMeal;
     }
-    throw new Error("Erro ao regenerar refeição.");
+    throw new Error("Resposta vazia da IA");
   } catch (error) {
     console.error(error);
     throw error;
@@ -114,19 +97,34 @@ export const regenerateMeal = async (user: UserData, currentMealName: string, ta
 }
 
 export const generateWorkoutPlan = async (user: UserData): Promise<WorkoutDay[]> => {
+  const systemInstruction = `
+    Você é um personal trainer de elite.
+    Gere um plano de treino semanal.
+    Retorne APENAS um JSON válido.
+    
+    O formato deve ser EXATAMENTE um array de objetos:
+    [
+      {
+        "dayName": "Treino A",
+        "focus": "Pernas",
+        "duration": "Até 1h",
+        "cardio": "20min caminhada",
+        "exercises": [
+           { "name": "Agachamento", "sets": 3, "reps": "12", "rest": "60s", "notes": "Desça devagar" }
+        ]
+      }
+    ]
+  `;
+
   const prompt = `
-    Crie um plano de treino personalizado para uma pessoa com foco em emagrecimento e definição.
-    - Dias disponíveis: ${user.workoutDays} dias por semana.
-    - Tempo disponível por treino: ${user.workoutDuration}.
-    - Grupos musculares alvo: ${user.targetMuscles.join(', ')}.
-    - Nível de atividade atual: ${user.activityLevel}.
+    Crie um treino para emagrecimento e definição:
+    - Dias por semana: ${user.workoutDays}
+    - Tempo disponível: ${user.workoutDuration}
+    - Grupos musculares alvo: ${user.targetMuscles.join(', ')}
+    - Nível de atividade: ${user.activityLevel}
     
-    IMPORTANTE:
-    - Respeite o limite de tempo informado (${user.workoutDuration}). Ajuste volume e intensidade para caber neste tempo.
-    - O treino deve ser equilibrado para evitar fadiga muscular excessiva e prevenir lesões, considerando que o usuário está em déficit calórico.
-    - Inclua musculação e cardio adequado ao tempo.
-    
-    Retorne APENAS um JSON válido seguindo estritamente o schema solicitado.
+    IMPORTANTE: Respeite rigorosamente o tempo de ${user.workoutDuration}. Ajuste o volume (séries) para caber.
+    Inclua musculação e cardio.
   `;
 
   try {
@@ -134,39 +132,15 @@ export const generateWorkoutPlan = async (user: UserData): Promise<WorkoutDay[]>
       model: MODEL_ID,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              dayName: { type: Type.STRING, description: "Ex: Treino A" },
-              focus: { type: Type.STRING, description: "Ex: Pernas e Glúteos" },
-              duration: { type: Type.STRING, description: "Duração estimada em minutos" },
-              cardio: { type: Type.STRING, description: "Instrução específica de cardio" },
-              exercises: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    sets: { type: Type.NUMBER },
-                    reps: { type: Type.STRING },
-                    rest: { type: Type.STRING },
-                    notes: { type: Type.STRING }
-                  }
-                }
-              }
-            }
-          }
-        }
+        systemInstruction: systemInstruction,
+        responseMimeType: 'application/json'
       }
     });
 
     if (response.text) {
       return JSON.parse(response.text) as WorkoutDay[];
     }
-    throw new Error("Não foi possível gerar o treino.");
+    throw new Error("Resposta vazia da IA");
   } catch (error) {
     console.error("Erro ao gerar treino:", error);
     throw error;
@@ -176,14 +150,24 @@ export const generateWorkoutPlan = async (user: UserData): Promise<WorkoutDay[]>
 export const regenerateWorkoutDay = async (user: UserData, currentDay: WorkoutDay, newDuration?: string): Promise<WorkoutDay> => {
   const durationToUse = newDuration || currentDay.duration;
 
+  const systemInstruction = `
+    Você é um personal trainer. Gere APENAS um dia de treino para substituir o atual.
+    Retorne APENAS um JSON válido no seguinte formato:
+    {
+        "dayName": "Treino X",
+        "focus": "...",
+        "duration": "...",
+        "cardio": "...",
+        "exercises": [ ... ]
+    }
+  `;
+
   const prompt = `
-    Crie uma NOVA sequência de exercícios para substituir o treino de "${currentDay.dayName}".
+    Crie uma NOVA sequência para o dia "${currentDay.dayName}".
     - Foco Muscular: ${currentDay.focus}
-    - Duração Alvo: ${durationToUse} (IMPORTANTE: Ajuste o volume para caber neste novo tempo).
-    - Objetivo: Perda de gordura e definição.
-    - Mude os exercícios em relação ao comum, varie os estímulos.
-    
-    Retorne APENAS um JSON válido para o objeto do dia de treino.
+    - Duração Alvo: ${durationToUse} (CRÍTICO: Ajuste para caber neste tempo).
+    - Objetivo: Perda de gordura.
+    - Varie os exercícios em relação ao comum.
   `;
 
   try {
@@ -191,36 +175,15 @@ export const regenerateWorkoutDay = async (user: UserData, currentDay: WorkoutDa
       model: MODEL_ID,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            dayName: { type: Type.STRING, description: "Mantenha o nome original" },
-            focus: { type: Type.STRING, description: "Mesmo foco" },
-            duration: { type: Type.STRING, description: "A duração solicitada" },
-            cardio: { type: Type.STRING },
-            exercises: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  sets: { type: Type.NUMBER },
-                  reps: { type: Type.STRING },
-                  rest: { type: Type.STRING },
-                  notes: { type: Type.STRING }
-                }
-              }
-            }
-          }
-        }
+        systemInstruction: systemInstruction,
+        responseMimeType: 'application/json'
       }
     });
 
     if (response.text) {
       return JSON.parse(response.text) as WorkoutDay;
     }
-    throw new Error("Erro ao regenerar treino.");
+    throw new Error("Resposta vazia da IA");
   } catch (error) {
     console.error(error);
     throw error;
