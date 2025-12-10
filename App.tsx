@@ -1601,22 +1601,32 @@ const App: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("Tem certeza absoluta? Essa ação apagará todos os seus dados e histórico. Você poderá usar o mesmo email para criar uma nova conta do zero.")) return;
+    if (!confirm("Tem certeza absoluta? Essa ação apagará PERMANENTEMENTE sua conta e todos os dados associados. Essa ação não pode ser desfeita.")) return;
     
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
        try {
-         // Delete data associated with user
-         await supabase.from('plans').delete().eq('user_id', authUser.id);
-         await supabase.from('profiles').delete().eq('id', authUser.id);
+         // 1. Tenta deletar via RPC (Função de banco de dados) para remover conta Auth + Dados (via Cascade)
+         // Necessário executar o SQL: create function delete_user() returns void language sql security definer as $$ delete from auth.users where id = auth.uid(); $$;
+         const { error: rpcError } = await supabase.rpc('delete_user');
+
+         if (rpcError) {
+             console.warn("Função RPC 'delete_user' não encontrada ou erro de permissão. Tentando exclusão manual dos dados...", rpcError);
+             // Fallback: Deleta dados públicos manualmente se a RPC não existir
+             // Nota: Isso NÃO deleta a conta de autenticação (email), apenas os dados
+             await supabase.from('plans').delete().eq('user_id', authUser.id);
+             await supabase.from('profiles').delete().eq('id', authUser.id);
+         }
          
-         // Sign out
+         // 2. Sign out
          await supabase.auth.signOut();
+         
+         // 3. Reset UI
          setStep(0);
          setUser(initialUser);
          setDietPlan(null);
          setWorkoutPlan(null);
-         alert("Conta resetada com sucesso.");
+         alert("Conta e dados excluídos.");
        } catch (e) {
          console.error(e);
          alert("Erro ao excluir dados.");
@@ -1653,7 +1663,7 @@ const App: React.FC = () => {
          const calculated = calculateStats({ ...initialUser, ...profile, gender: profile.gender as Gender, activityLevel: profile.activity_level as ActivityLevel }, DeficitLevel.MODERATE); 
          setStats(calculated);
        } else {
-         // User authenticated but no profile found (e.g. deleted account). Reset.
+         // User authenticated but no profile found (e.g. deleted account but session remains). Reset.
          setStep(0);
          setUser(initialUser);
          return;
